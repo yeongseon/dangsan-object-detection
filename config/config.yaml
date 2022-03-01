@@ -1,0 +1,45 @@
+comment: Commentaire sur l'entraînement
+
+wandb:
+  name_project: "cots_detection"
+  entity: "cots-detection"
+  name_run: 
+
+data:
+  csv_file: assets/tensorflow-great-barrier-reef/train.csv
+  root_path: assets/tensorflow-great-barrier-reef/train_images
+
+augmentation:
+  size: 
+    w: 1280
+    h: 720
+
+configs:
+  epoch: 150
+  batch_size: 1
+  seed: 1
+  checkpoint:
+    monitor: "validation/F2_score"
+    mode: "max"
+  early_stopping:
+    monitor: "train/loss_sum"
+    mode: "min"
+    patience: 80
+
+model:
+  name: model.RetinaNet.RetinaNet
+  params:
+    pretrained: True
+    pretrained_backbone: True
+
+optimizer:
+  name: torch.optim.SGD
+  params:
+    lr: 0.005
+    momentum : 0.9
+
+scheduler:
+  name: torch.optim.lr_scheduler.CosineAnnealingLR
+  params:
+    T_max: 150
+    eta_min: 0.00001
