@@ -1,7 +1,7 @@
 # Dangsan Object Detection Baseline
 ## Installation
 
-* Installed on `Python 3.9.7`
+* Installed on ~~`Python 3.9.7`~~ `Python 3.7.9`
 ```bash
 $ git clone https://github.com/yeongseon/dangsan-object-detection.git
 $ cd dangsan-object-detection
