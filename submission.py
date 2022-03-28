@@ -10,12 +10,12 @@ import numpy as np
 
 import torch
 
-from logger import init_logger
+from utils.logger import init_logger
 import utils as utils
 from albumentations.pytorch.transforms import ToTensorV2
 from tqdm import tqdm
 import albumentations as A
-from utils import draw_predictions_and_targets
+from utils.utils import draw_predictions_and_targets
 import matplotlib.pyplot as plt
 
 def format_prediction_string(boxes, scores):
@@ -105,7 +105,7 @@ logger.info(f"Device : {device}")
 
 model_name = args.model
 logger.info(f"Model : {model_name}")
-model_cls = utils.import_class(model_name)
+model_cls = utils.utils.import_class(model_name)
 model = model_cls()
 logger.info(f"Model : {model}")
 
