@@ -85,3 +85,43 @@ def resize(img, coeff):
     return cv2.resize(img,
                       dsize=(img.shape[1] // coeff, img.shape[0] // coeff),
                       interpolation=cv2.INTER_LINEAR)
+
+### yaml function ###
+
+def load_yaml(path):
+    """
+    Load yaml file
+    You can overwrite yaml file using CFG
+    """
+    import yaml
+    with open(path, "r") as f:
+        try:    
+            template = yaml.load(f, Loader=yaml.FullLoader)
+        except yaml.YAMLError as exc:
+            print(exc)
+    return template
+
+def save_yaml(file, yaml):
+    """
+    Save yaml file
+    """
+    import yaml
+    with open(file, "w") as f:
+        try:
+            yaml.dump(file, f)
+            print(f"Saved : {file}")
+        except yaml.YAMLError as exc:
+            print(exc)
+
+def overwrite_yaml(yaml, dst):
+    """
+    dst : class CFG
+    """
+    yaml['wandb'] = dst.wandb
+    yaml['data'] = dst.data
+    yaml['augmentation'] = dst.augmentation
+    yaml['configs'] = dst.configs
+    yaml['model'] = dst.model
+    yaml['optimizer'] = dst.optimizer
+    yaml['scheduler'] = dst.scheduler
+    return yaml 
