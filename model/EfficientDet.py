@@ -25,13 +25,13 @@ def get_efficientDet(nclasses,
     return net, config
 
 # class name EfficientDetModel
-class EfficientDet(nn.Module): 
+class EfficientDetModel(nn.Module): 
     def __init__(self,
                  nclasses: int=2,
                  image_size: int=512, # size % 128 = 0
                  pretrained=False,
                  pretrained_backbone=False) -> None:
-        super(EfficientDet, self).__init__()
+        super(EfficientDetModel, self).__init__()
 
         self.model, self.config = get_efficientDet(nclasses, 
                                                    image_size, 
