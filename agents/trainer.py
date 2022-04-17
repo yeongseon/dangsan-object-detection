@@ -12,7 +12,7 @@ import wandb
 import yaml
 from datasets.ReefDataset import ReefDataset, collate_fn
 from easydict import EasyDict
-from model.yolox.data.data_augment import ValTransform
+# from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
 from torchmetrics.detection.map import MAP
 from tqdm import tqdm
