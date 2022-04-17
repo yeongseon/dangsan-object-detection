@@ -6,6 +6,7 @@ import math
 class RetinaNet(nn.Module):
     def __init__(self,
                  nclasses: int = 2,
+                 image_size: int=512, # dummy for template
                  pretrained=False,
                  pretrained_backbone=False) -> None:
         super(RetinaNet, self).__init__()

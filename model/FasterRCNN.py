@@ -5,6 +5,7 @@ import torchvision.models as models
 class FasterRCNN(nn.Module):
     def __init__(self,
                  nclasses: int = 2,
+                 image_size: int=512, # dummy for template
                  pretrained=False,
                  pretrained_backbone=False) -> None:
         super(FasterRCNN, self).__init__()
