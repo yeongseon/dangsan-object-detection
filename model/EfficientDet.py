@@ -1,17 +1,14 @@
-import sys
-sys.path.insert(0, './efficientdet_pytorch')
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import traceback
 import torchvision.models as models
-from effdet import * # get_efficientdet_config
-from effdet.efficientdet import HeadNet
-from effdet.anchors import Anchors, AnchorLabeler, generate_detections
-from effdet.loss import DetectionLoss
-from effdet.config import set_config_readonly, set_config_writeable
+from efficientdet_pytorch.effdet import * # get_efficientdet_config
+from efficientdet_pytorch.effdet.efficientdet import HeadNet
+from efficientdet_pytorch.effdet.anchors import Anchors, AnchorLabeler, generate_detections
+from efficientdet_pytorch.effdet.loss import DetectionLoss
+from efficientdet_pytorch.effdet.config import set_config_readonly, set_config_writeable
 
 def get_efficientDet(nclasses, 
                      image_size,
