@@ -102,14 +102,14 @@ def load_yaml(path):
             print(exc)
     return template
 
-def save_yaml(file, yaml):
+def save_yaml(file, data):
     """
     Save yaml file
     """
     import yaml
     with open(file, "w") as f:
         try:
-            yaml.dump(file, f)
+            yaml.dump(data, f)
             print(f"Saved : {file}")
         except yaml.YAMLError as exc:
             print(exc)
