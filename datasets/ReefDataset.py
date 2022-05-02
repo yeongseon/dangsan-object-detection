@@ -156,7 +156,7 @@ def collate_fn(batch):
         # images = torch.stack(images)
         # images = images.float()
 
-        boxes = [target["bboxes"].float() for target in targets]
+        boxes = [target["boxes"].float() for target in targets]
         labels = [target["labels"].float() for target in targets]
         img_size = torch.tensor([target["img_size"] for target in targets]).float()
         img_scale = torch.tensor([target["img_scale"] for target in targets]).float()
