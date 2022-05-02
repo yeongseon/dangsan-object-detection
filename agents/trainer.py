@@ -317,6 +317,7 @@ class Trainer():
                     )
 
                     loss_dict = self.model(images, target)
+                    metrics['loss'] = loss_dict['loss']
                     metrics['class_loss'] = loss_dict['class_loss']
                     metrics['box_loss'] = loss_dict['box_loss']
                     continue # it cannot calculate boxes, F2-score, etc.
