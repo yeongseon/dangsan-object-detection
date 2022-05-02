@@ -112,7 +112,7 @@ class ReefDataset(Dataset):
         # target["image_id"] = image_id
         target["area"] = area
         target["iscrowd"] = iscrowd
-        target["image_id"] = torch.tensor([image_id])
+        target["image_id"] = torch.tensor([idx])
         target["img_size"] = (new_h, new_w)
         target["img_scale"] = torch.tensor([1.0])
 
@@ -146,15 +146,15 @@ class ReefDataset(Dataset):
                     transformed = transforms(image=np.array(img))
                     img = torch.as_tensor(transformed['image'])
 
-        return img, target
+        return img, target, image_id
 
     def __len__(self):
         return len(self.img_annotations)
 
 def collate_fn(batch):
         images, targets, image_ids = tuple(zip(*batch))
-        images = torch.stack(images)
-        images = images.float()
+        # images = torch.stack(images)
+        # images = images.float()
 
         boxes = [target["bboxes"].float() for target in targets]
         labels = [target["labels"].float() for target in targets]
