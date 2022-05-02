@@ -317,8 +317,8 @@ class Trainer():
                     )
 
                     loss_dict = self.model(images, target)
-                    metrics_inst['class_loss'] = loss_dict['class_loss']
-                    metrics_inst['box_loss'] = loss_dict['box_loss']
+                    metrics['class_loss'] = loss_dict['class_loss']
+                    metrics['box_loss'] = loss_dict['box_loss']
                     continue # it cannot calculate boxes, F2-score, etc.
 
                 else:
@@ -382,11 +382,20 @@ class Trainer():
                                                  outputs=output)
                 if self.fast_dev_run:
                     break
-
-        metrics = {
-            'validation/' + k: v.compute()
-            for k, v in metrics_inst.items()
-        }
+        
+        # For F2-Score Metrics
+        if "EfficientDet" not in self.config.model.name:
+            metrics = {
+                'validation/' + k: v.compute()
+                for k, v in metrics_inst.items()
+            }
+        # For EfficientDet Metrics
+        else:
+            metrics = {
+                        'validation/' + k:
+                        v.detach().cpu().numpy() if torch.is_tensor(v) else v
+                        for k, v in metrics.items()
+                    }
 
         self.wandb_logger.log_videos((data, targets),
                                      "validation")  # TODO implement
