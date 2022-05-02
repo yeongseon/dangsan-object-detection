@@ -194,7 +194,7 @@ class Trainer():
                 "EfficientDet" not in self.config.model.name:
                 images = list(image.to(self.device) for image in data)
                 targets = [{k: v.to(self.device)
-                            for k, v in t.items()} for t in targets]
+                            for k, v in t.items() if 'img_size' != k } for t in targets]
                 loss_dict = self.model(images, targets)
                 loss = sum(l for l in loss_dict.values())
 
@@ -292,7 +292,7 @@ class Trainer():
                    "EfficientDet" not in self.config.model.name:
                     images = list(image.to(self.device) for image in data)
                     targets = [{k: v.to(self.device)
-                                for k, v in t.items()} for t in targets]
+                                for k, v in t.items() if 'img_size' != k } for t in targets]
 
                     output = self.model(images, targets)
 
@@ -316,11 +316,20 @@ class Trainer():
                         torch.tensor( annot["img_size"]).to(self.device).float()
                     )
 
-                    loss_dict = self.model(images, target)
-                    metrics['loss'] = loss_dict['loss']
-                    metrics['class_loss'] = loss_dict['class_loss']
-                    metrics['box_loss'] = loss_dict['box_loss']
-                    continue # it cannot calculate boxes, F2-score, etc.
+                    output = self.model(images, target) # output contains loss, class_loss, box_loss, detections(bbox, score, labels)
+                    pred_bboxes_list = [
+                        np.concatenate((
+                            pred[:, -2].unsqueeze(1).cpu().detach().numpy(), # 100 scores 
+                            pred[:, :-2].cpu().detach().numpy()), # 100 boxes
+                        axis=1) for pred in output['detections']
+                    ]
+                    # for calculating MAP
+                    output = [{
+                            'labels' : pred[:, -1].detach(),
+                            'scores' : pred[:, -2].detach(),
+                            'boxes' : pred[:, :-2].detach()
+                        } for pred in output['detections']
+                    ]
 
                 else:
                     images = torch.tensor(np.stack(list(data)))
@@ -358,8 +367,8 @@ class Trainer():
                 # Update metrics
                 gt_bboxes_list = [t['boxes'].cpu().numpy() for t in targets]
 
-                metrics_inst["F2_score"].update(gt_bboxes_list,
-                                                pred_bboxes_list)
+                metrics_inst["F2_score"].update(gt_bboxes_list, # 1 x 4 matrix
+                                                pred_bboxes_list) # n x 5 matrix (score + boxes)
 
                 # MAP
                 for t in targets:
@@ -373,8 +382,9 @@ class Trainer():
                         'boxes': t['boxes'].cpu(), 'labels': t['labels'].cpu()}
 
                 targets_map = [
-                    {'boxes': t['boxes'].cpu(), 'labels':t['labels'].cpu()} for t in targets]
-                metrics_inst['MAP'].update(output, targets_map)
+                    {'boxes': t['boxes'].cpu(), 'labels':t['labels'].cpu()} for t in targets
+                    ]
+                metrics_inst['MAP'].update(output, targets_map) # output need to contain boxes, scores, labels
 
                 if batch_idx == 0:
                     self.wandb_logger.log_images((data, targets),
@@ -384,19 +394,10 @@ class Trainer():
                 if self.fast_dev_run:
                     break
         
-        # For F2-Score Metrics
-        if "EfficientDet" not in self.config.model.name:
-            metrics = {
-                'validation/' + k: v.compute()
-                for k, v in metrics_inst.items()
-            }
-        # For EfficientDet Metrics
-        else:
-            metrics = {
-                        'validation/' + k:
-                        v.detach().cpu().numpy() if torch.is_tensor(v) else v
-                        for k, v in metrics.items()
-                    }
+        metrics = {
+            'validation/' + k: v.compute()
+            for k, v in metrics_inst.items()
+        }
 
         self.wandb_logger.log_videos((data, targets),
                                      "validation")  # TODO implement
