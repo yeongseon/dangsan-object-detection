@@ -4,6 +4,7 @@
 import datasets.transforms as T
 import numpy as np
 import torch
+import torch.optim as optim
 import utils.callbacks as callbacks
 import utils.metrics as ut_metrics
 import utils.utils as utils
@@ -16,6 +17,9 @@ from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
 from torchmetrics.detection.map import MAP
 from tqdm import tqdm
+
+import optuna
+from optuna.integration.wandb import WeightsAndBiasesCallback
 
 wandb.login()
 
@@ -59,119 +63,147 @@ class Trainer():
             config=self.config)
 
         self.logger = logger
-        ##############################
-        #####  PREPARATION TRAIN #####
-        ##############################
-        self.logger.info("Preparation training parameters")
 
-        # Device
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
-        self.logger.info(f"Device : {self.device}")
-        if torch.cuda.is_available():
-            self.logger.info(torch.cuda.get_device_name(0))
+        #if args.num_workers:
+        #    self.num_workers = args.num_workers
 
-        # Seed
-        torch.manual_seed(self.config.configs.get("seed", 1))
+        #if args.relaunch:
+        #    self.relaunch = args.relaunch
 
-        # Model
-        self.logger.info("Model : {}".format(self.config.model.name))
+        if self.config.optuna.run:
+            wandb_kwargs = {"project": self.config.wandb.name_project}
+            self.wandbc = WeightsAndBiasesCallback(metric_name="F2_score", wandb_kwargs=wandb_kwargs)
 
-        model_cls = utils.import_class(self.config.model.name)
-        self.model = model_cls(**self.config.model.get('params', {}))
-        self.model.to(self.device)
-        self.logger.info("Model : {}".format(self.model))
-        self.wandb_logger.run.watch(self.model)
+            study = optuna.create_study(direction="minimize")
+            objective = self.objective
+            study.optimize(objective, n_trials=self.config.optuna.trials, callbacks=[self.wandbc])
 
-        if self.config.get('criterion'):
-            self.logger.info("Loss function : {}".format(
-                self.config.criterion.name))
-            criterion_cls = utils.import_class(self.config.criterion.name)
-            self.criterion = criterion_cls(
-                **self.config.criterion.get('params', {}))
+            print("Number of finished trials: ", len(study.trials))
 
-        # Optimizer
-        self.logger.info("Optimizer : {}".format(self.config.optimizer.name))
+            print("Best trial:")
+            trial = study.best_trial
 
-        optimizer_cls = utils.import_class(self.config.optimizer.name)
-        self.optimizer = optimizer_cls(
-            filter(lambda p: p.requires_grad, self.model.parameters()),
-            **self.config.optimizer.params)
+            print("  Value: ", trial.value)
 
-        # Scheduler
-        if self.config.get('scheduler'):
-            self.logger.info("Scheduler : {}".format(
-                self.config.scheduler.name))
-            scheduler_cls = utils.import_class(self.config.scheduler.name)
-            self.scheduler = scheduler_cls(self.optimizer,
-                                           **self.config.scheduler.params)
+            print("  Params: ")
+            for key, value in trial.params.items():
+                print("    {}: {}".format(key, value))
+        else:
+            ##############################
+            #####  PREPARATION TRAIN #####
+            ##############################
+            self.logger.info("Preparation training parameters")
 
-        if args.load_checkpoint:
-            self.logger.info("Loading checkpoint {}".format(
-                args.load_checkpoint))
-            checkpoint = torch.load(args.load_checkpoint,
-                                    map_location=self.device)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            # Device
+            self.device = torch.device(
+                "cuda" if torch.cuda.is_available() else "cpu")
+            self.logger.info(f"Device : {self.device}")
+            if torch.cuda.is_available():
+                self.logger.info(torch.cuda.get_device_name(0))
 
-            if hasattr(self, 'loss'):
-                self.loss = checkpoint['loss']
-            if hasattr(self, 'scheduler'):
-                self.scheduler.load_state_dict(
-                    checkpoint['scheduler_state_dict'])
+            # Seed
+            torch.manual_seed(self.config.configs.get("seed", 1))
 
-        self.start_epoch = 1
+            # Model
+            #self.logger.info("Model : {}".format(self.config.model.name))
 
-        ##############################
-        #####  PREPARATION DATA #####
-        ##############################
+            model_cls = utils.import_class(self.config.model.name)
+            self.model = model_cls(**self.config.model.get('params', {}))
+            self.model.to(self.device)
+            #self.logger.info("Model : {}".format(self.model))
+            self.wandb_logger.run.watch(self.model)
 
-        self.logger.info(f"Reading {self.config.data.root_path}")
+            if self.config.get('criterion'):
+                self.logger.info("Loss function : {}".format(
+                    self.config.criterion.name))
+                criterion_cls = utils.import_class(self.config.criterion.name)
+                self.criterion = criterion_cls(
+                    **self.config.criterion.get('params', {}))
 
-        conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
-        format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
+            # Optimizer
+            self.logger.info("Optimizer : {}".format(self.config.optimizer.name))
 
-        train_set = ReefDataset(
-            self.config.data.csv_file,
-            self.config.data.root_path,
-            augmentation=self.config.augmentation,
-            train=True,
-            conv_bbox=conv_bbox,
-            transforms=T.get_transform(
-                True, self.config.augmentation, format=format
-            ),  #  FIXME changer format en fonction de fasterRCNN et yolo
-        )
-        val_set = ReefDataset(self.config.data.csv_file,
-                              self.config.data.root_path,
-                              augmentation=self.config.augmentation,
-                              train=False,
-                              conv_bbox=conv_bbox,
-                              transforms=T.get_transform(
-                                  False,
-                                  self.config.augmentation,
-                                  format=format))
+            optimizer_cls = utils.import_class(self.config.optimizer.name)
+            self.optimizer = optimizer_cls(
+                filter(lambda p: p.requires_grad, self.model.parameters()),
+                **self.config.optimizer.params)
 
-        train_loader = torch.utils.data.DataLoader(
-            train_set,
-            batch_size=self.config.configs.batch_size,
-            shuffle=True,
-            collate_fn=collate_fn,
-            num_workers=args.num_workers)
-        val_loader = torch.utils.data.DataLoader(
-            val_set,
-            batch_size=self.config.configs.batch_size,
-            shuffle=False,
-            collate_fn=collate_fn,
-            num_workers=args.num_workers)
+            # Scheduler
+            if self.config.get('scheduler'):
+                self.logger.info("Scheduler : {}".format(
+                    self.config.scheduler.name))
+                scheduler_cls = utils.import_class(self.config.scheduler.name)
+                self.scheduler = scheduler_cls(self.optimizer,
+                                               **self.config.scheduler.params)
 
-        self.logger.info("train : {}, validation : {}".format(
-            len(train_loader.dataset), len(val_loader.dataset)))
+            if args.load_checkpoint:
+                self.logger.info("Loading checkpoint {}".format(
+                    args.load_checkpoint))
+                checkpoint = torch.load(args.load_checkpoint,
+                                        map_location=self.device)
+                self.model.load_state_dict(checkpoint['model_state_dict'])
+                self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-        ##############################
-        #####    ENTRAINEMENT    #####
-        ##############################
+                if hasattr(self, 'loss'):
+                    self.loss = checkpoint['loss']
+                if hasattr(self, 'scheduler'):
+                    self.scheduler.load_state_dict(
+                        checkpoint['scheduler_state_dict'])
 
-        self.train_epoch(train_loader, val_loader, relaunch=args.relaunch)
+            self.start_epoch = 1
+
+            ##############################
+            #####  PREPARATION DATA #####
+            ##############################
+
+            self.logger.info(f"Reading {self.config.data.root_path}")
+
+            conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
+            format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
+
+            train_set = ReefDataset(
+                self.config.data.csv_file,
+                self.config.data.root_path,
+                augmentation=self.config.augmentation,
+                train=True,
+                conv_bbox=conv_bbox,
+                transforms=T.get_transform(
+                    True, self.config.augmentation, format=format
+                ),  #  FIXME changer format en fonction de fasterRCNN et yolo
+            )
+            val_set = ReefDataset(self.config.data.csv_file,
+                                  self.config.data.root_path,
+                                  augmentation=self.config.augmentation,
+                                  train=False,
+                                  conv_bbox=conv_bbox,
+                                  transforms=T.get_transform(
+                                      False,
+                                      self.config.augmentation,
+                                      format=format))
+
+            train_loader = torch.utils.data.DataLoader(
+                train_set,
+                batch_size=self.config.configs.batch_size,
+                shuffle=True,
+                collate_fn=collate_fn,
+                num_workers=args.num_workers)
+            val_loader = torch.utils.data.DataLoader(
+                val_set,
+                batch_size=self.config.configs.batch_size,
+                shuffle=False,
+                collate_fn=collate_fn,
+                num_workers=args.num_workers)
+
+            self.logger.info("train : {}, validation : {}".format(
+                len(train_loader.dataset), len(val_loader.dataset)))
+
+            ##############################
+            #####    ENTRAINEMENT    #####
+            ##############################
+
+            metric = self.train_epoch(train_loader, val_loader, relaunch=args.relaunch)
+            print(metric)
+
 
     def train(self, epoch, train_loader):
 
@@ -248,6 +280,7 @@ class Trainer():
                 break
 
         return loss_dict
+
 
     def validation(self, val_loader, metrics_inst):
 
@@ -354,7 +387,9 @@ class Trainer():
 
         return metrics
 
+
     def train_epoch(self, train_loader, val_loader, relaunch=False):
+
         self.logger.info("Launch training, start epoch : {}".format(
             self.start_epoch))
 
@@ -444,3 +479,135 @@ class Trainer():
             fold=self.fold if hasattr(self, 'fold') else None,
             name="last_checkpoint",
             end=True)
+
+        return metrics
+
+
+    def objective(self, trial):
+
+        ##############################
+        #####  PREPARATION TRAIN #####
+        ##############################
+        self.logger.info("Preparation training parameters")
+
+        # Device
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
+        self.logger.info(f"Device : {self.device}")
+        if torch.cuda.is_available():
+            self.logger.info(torch.cuda.get_device_name(0))
+
+        # Seed
+        torch.manual_seed(self.config.configs.get("seed", 1))
+
+        # Model
+        self.logger.info("Model : {}".format(self.config.model.name))
+
+        model_cls = utils.import_class(self.config.model.name)
+        self.model = model_cls(**self.config.model.get('params', {}))
+        self.model.to(self.device)
+        #self.logger.info("Model : {}".format(self.model))
+        self.wandb_logger.run.watch(self.model)
+
+        if self.config.get('criterion'):
+            self.logger.info("Loss function : {}".format(
+                self.config.criterion.name))
+            criterion_cls = utils.import_class(self.config.criterion.name)
+            self.criterion = criterion_cls(
+                **self.config.criterion.get('params', {}))
+
+        # Optimizer
+        optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
+        lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+        #print(self.model.parameters())
+        self.optimizer = getattr(optim, optimizer_name)(self.model.parameters(), lr=lr)
+
+        #self.logger.info("Optimizer : {}".format(optimizer_name))
+
+        #optimizer_cls = utils.import_class(self.config.optimizer.name)
+        #self.optimizer = optimizer_cls(
+        #    filter(lambda p: p.requires_grad, self.model.parameters()),
+        #    **self.config.optimizer.params)
+
+
+        # Scheduler
+        if self.config.get('scheduler'):
+            self.logger.info("Scheduler : {}".format(
+                self.config.scheduler.name))
+            scheduler_cls = utils.import_class(self.config.scheduler.name)
+            self.scheduler = scheduler_cls(self.optimizer,
+                                           **self.config.scheduler.params)
+        '''
+        if args.load_checkpoint:
+            self.logger.info("Loading checkpoint {}".format(
+                args.load_checkpoint))
+            checkpoint = torch.load(args.load_checkpoint,
+                                    map_location=self.device)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+            if hasattr(self, 'loss'):
+                self.loss = checkpoint['loss']
+            if hasattr(self, 'scheduler'):
+                self.scheduler.load_state_dict(
+                    checkpoint['scheduler_state_dict'])
+        '''
+        self.start_epoch = 1
+
+        ##############################
+        #####  PREPARATION DATA #####
+        ##############################
+
+        self.logger.info(f"Reading {self.config.data.root_path}")
+
+        conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
+        format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
+
+        train_set = ReefDataset(
+            self.config.data.csv_file,
+            self.config.data.root_path,
+            augmentation=self.config.augmentation,
+            train=True,
+            conv_bbox=conv_bbox,
+            transforms=T.get_transform(
+                True, self.config.augmentation, format=format
+            ),  # ?FIXME changer format en fonction de fasterRCNN et yolo
+        )
+        val_set = ReefDataset(self.config.data.csv_file,
+                              self.config.data.root_path,
+                              augmentation=self.config.augmentation,
+                              train=False,
+                              conv_bbox=conv_bbox,
+                              transforms=T.get_transform(
+                                  False,
+                                  self.config.augmentation,
+                                  format=format))
+
+        train_loader = torch.utils.data.DataLoader(
+            train_set,
+            batch_size=self.config.configs.batch_size,
+            shuffle=True,
+            collate_fn=collate_fn,
+            num_workers=0)
+            #self.num_workers)
+            #num_workers=args.num_workers)
+        val_loader = torch.utils.data.DataLoader(
+            val_set,
+            batch_size=self.config.configs.batch_size,
+            shuffle=False,
+            collate_fn=collate_fn,
+            num_workers=0) #self.num_workers)
+            #num_workers=args.num_workers)
+
+        self.logger.info("train : {}, validation : {}".format(
+            len(train_loader.dataset), len(val_loader.dataset)))
+
+        ##############################
+        #####    ENTRAINEMENT    #####
+        ##############################
+
+        metrics = self.train_epoch(train_loader, val_loader)#, relaunch=self.relaunch)
+
+        score = metrics['validation/F2_score'].cpu().numpy().argmin()
+
+        return score

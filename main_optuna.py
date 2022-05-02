@@ -1,7 +1,7 @@
 '''
     Author: Clément APAVOU
 '''
-from agents.trainer import Trainer
+from agents.trainer_optuna import Trainer
 from utils.logger import init_logger
 import argparse
 
