@@ -188,6 +188,7 @@ class Trainer():
 
         for batch_idx, (data, annot, targets, image_ids) in enumerate(
                 train_iterator):  # put coefficient for each loss
+                # targets not used in EfficientDet
 
             if  "yolox" not in self.config.model.name and \
                 "EfficientDet" not in self.config.model.name:
@@ -211,8 +212,8 @@ class Trainer():
                     torch.tensor( annot["img_size"]).to(self.device).float()
                 )
 
-                output = self.model(images , target)
-                loss = output['loss']
+                loss_dict = self.model(images , target)
+                loss = loss_dict['loss']
                 # c_loss = output['class_loss']
                 # b_loss = output['box_loss']
 
@@ -256,7 +257,8 @@ class Trainer():
 
             self.wandb_logger.run.log(loss_dict)
 
-            if batch_idx == 0:
+            if batch_idx == 0 and \
+               "EfficientDet" not in self.config.model.name:
                 self.wandb_logger.log_images(
                     (data, targets), "train", 5
                 )  #  FIXME wrong images and targets for yolox (parce que labels pas les mêmes pour l'affichage)
@@ -284,9 +286,10 @@ class Trainer():
             v.reset()
 
         with torch.no_grad():
-            for batch_idx, (data, targets) in enumerate(valid_iterator):
+            for batch_idx, (data, annot, targets, image_ids) in enumerate(valid_iterator):
 
-                if "yolo" not in self.config.model.name:
+                if "yolo" not in self.config.model.name and \
+                   "EfficientDet" not in self.config.model.name:
                     images = list(image.to(self.device) for image in data)
                     targets = [{k: v.to(self.device)
                                 for k, v in t.items()} for t in targets]
@@ -299,6 +302,24 @@ class Trainer():
                             pred['boxes'].cpu().detach().numpy()),
                             axis=1) for pred in output
                     ]
+                elif "EfficientDet" in self.config.model.name:
+                    batch_size = len(image_ids) # self.config.configs.batch_size
+                    images = torch.stack(data)
+                    images = images.float().to(self.device)
+                    target = {}
+                    target["bbox"] = [a.to(self.device) for a in annot['boxes']]
+                    target["cls"] = [a.to(self.device) for a in annot["labels"]]
+                    target["img_scale"] = (
+                        torch.tensor([1] * batch_size).float().to(self.device)
+                    )
+                    target["img_size"] = (
+                        torch.tensor( annot["img_size"]).to(self.device).float()
+                    )
+
+                    loss_dict = self.model(images, target)
+                    metrics_inst['class_loss'] = loss_dict['class_loss']
+                    metrics_inst['box_loss'] = loss_dict['box_loss']
+                    continue # it cannot calculate boxes, F2-score, etc.
 
                 else:
                     images = torch.tensor(np.stack(list(data)))
