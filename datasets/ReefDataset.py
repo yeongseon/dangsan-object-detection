@@ -68,7 +68,7 @@ class ReefDataset(Dataset):
         try:
             img = Image.open(path_img).convert("RGB")
             img.verify()  # Verify it is in fact an image
-            _, new_h, new_w = img.shape
+            new_h, new_w, _  = np.array(img).shape
         except (IOError, SyntaxError) as e:
             # logger.warning('Bad file:', path_img)
             print(('Bad file:', path_img))
