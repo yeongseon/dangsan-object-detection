@@ -190,14 +190,14 @@ class Trainer():
                 train_iterator):  # put coefficient for each loss
 
             if  "yolox" not in self.config.model.name and \
-                "EffcientDet" not in self.config.model.name:
+                "EfficientDet" not in self.config.model.name:
                 images = list(image.to(self.device) for image in data)
                 targets = [{k: v.to(self.device)
                             for k, v in t.items()} for t in targets]
                 loss_dict = self.model(images, targets)
                 loss = sum(l for l in loss_dict.values())
 
-            elif "EffcientDet" in self.config.model.name:
+            elif "EfficientDet" in self.config.model.name:
                 batch_size = len(image_ids) # self.config.configs.batch_size
                 images = torch.stack(data)
                 images = images.float().to(self.device)
