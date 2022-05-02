@@ -68,7 +68,7 @@ class ReefDataset(Dataset):
         try:
             img = Image.open(path_img).convert("RGB")
             img.verify()  # Verify it is in fact an image
-            new_h, new_w, _  = np.array(img).shape
+            new_h, new_w, _  = np.array(img).shape # to return image shape
         except (IOError, SyntaxError) as e:
             # logger.warning('Bad file:', path_img)
             print(('Bad file:', path_img))
@@ -112,7 +112,7 @@ class ReefDataset(Dataset):
         # target["image_id"] = image_id
         target["area"] = area
         target["iscrowd"] = iscrowd
-        target["image_id"] = torch.tensor([idx])
+        target["image_id"] = torch.tensor([idx]) # to calculate image scale in train & valid code
         target["img_size"] = (new_h, new_w)
         target["img_scale"] = torch.tensor([1.0])
 
