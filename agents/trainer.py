@@ -186,15 +186,35 @@ class Trainer():
                                   'it', len(train_loader)),
                               leave=False)
 
-        for batch_idx, (data, targets) in enumerate(
+        for batch_idx, (data, annot, targets, image_ids) in enumerate(
                 train_iterator):  # put coefficient for each loss
 
-            if "yolox" not in self.config.model.name:
+            if  "yolox" not in self.config.model.name and \
+                "EffcientDet" not in self.config.model.name:
                 images = list(image.to(self.device) for image in data)
                 targets = [{k: v.to(self.device)
                             for k, v in t.items()} for t in targets]
                 loss_dict = self.model(images, targets)
                 loss = sum(l for l in loss_dict.values())
+
+            elif "EffcientDet" in self.config.model.name:
+                batch_size = len(image_ids) # self.config.configs.batch_size
+                images = torch.stack(data)
+                images = images.float().to(self.device)
+                target = {}
+                target["bbox"] = [a.to(self.device) for a in annot['boxes']]
+                target["cls"] = [a.to(self.device) for a in annot["labels"]]
+                target["img_scale"] = (
+                    torch.tensor([1] * batch_size).float().to(self.device)
+                )
+                target["img_size"] = (
+                    torch.tensor( annot["img_size"]).to(self.device).float()
+                )
+
+                output = self.model(images , target)
+                loss = output['loss']
+                # c_loss = output['class_loss']
+                # b_loss = output['box_loss']
 
             else:
                 images = torch.tensor(np.stack(list(data)))
