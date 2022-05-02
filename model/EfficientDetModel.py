@@ -29,14 +29,14 @@ def get_efficientDet(nclasses,
 # class name EfficientDetModel
 class EfficientDetModel(nn.Module): 
     def __init__(self,
-                 nclasses: int=2,
+                 nclasses: int=1,
                  image_size: int=512, # size % 128 = 0
                  pretrained=False,
                  pretrained_backbone=False) -> None:
         super(EfficientDetModel, self).__init__()
 
         self.model = create_model('tf_efficientdet_d1',
-                                  bench_task='train',
+                                  bench_task='train', # set predict at inference
                                   num_classes=nclasses,
                                   image_size=(image_size, image_size),
                                   bench_labeler=True,
