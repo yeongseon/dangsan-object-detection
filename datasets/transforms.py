@@ -58,6 +58,7 @@ def get_transform(train, augmentation = None, format="pascal_voc"):
     
     if train:
         # transforms.append(A.RandomSizedBBoxSafeCrop(width=augmentation.size.w, height=augmentation.size.h, erosion_rate=0.2))
+        transforms.append(A.Resize(width=augmentation.size.w, height=augmentation.size.h)) # 
         transforms.append(A.HorizontalFlip(p=0.5))
         transforms.append(A.VerticalFlip(p=0.5))
         transforms.append(A.RandomBrightnessContrast(p=0.6))
