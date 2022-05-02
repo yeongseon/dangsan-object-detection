@@ -21,7 +21,7 @@ class WandbLogger():
         images, targets = batch
 
         images = [img.cpu().numpy().transpose((1, 2, 0)) for img in list(images)[:n]]
-        targets = [{k: v.cpu().numpy() for k, v in t.items()} for t in targets[:n]]
+        targets = [{k: v.cpu().numpy() for k, v in t.items() if 'img_size' != k } for t in targets[:n]]
         if outputs != None:
             outputs = [{k: v.cpu().detach().numpy() for k, v in out.items()} for out in outputs[:n]]
         
