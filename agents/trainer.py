@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
     Author: Clément APAVOU
 '''
@@ -10,12 +11,15 @@ import utils.utils as utils
 import utils.WandbLogger as WandbLogger
 import wandb
 import yaml
-from datasets.ReefDataset import ReefDataset, collate_fn
+# from datasets.ReefDataset import ReefDataset, collate_fn
+from datasets.LesionDataset import LesionDataset
 from easydict import EasyDict
 from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
 from torchmetrics.detection.map import MAP
 from tqdm import tqdm
+from glob import glob
+import json
 
 wandb.login()
 
@@ -23,6 +27,7 @@ wandb.login()
 # from data import data_transforms
 
 
+# +
 class Trainer():
     def __init__(self, config_file, logger, args):
 
@@ -130,26 +135,36 @@ class Trainer():
 
         conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
         format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
+        
+        train_files = sorted(glob('../lesion_detection/train/*'))
+        
+        train_json_list = []
+        for file in train_files:
+            with open(file, "r") as json_file:
+                train_json_list.append(json.load(json_file))
 
-        train_set = ReefDataset(
-            self.config.data.csv_file,
-            self.config.data.root_path,
-            augmentation=self.config.augmentation,
-            train=True,
-            conv_bbox=conv_bbox,
-            transforms=T.get_transform(
-                True, self.config.augmentation, format=format
-            ),  #  FIXME changer format en fonction de fasterRCNN et yolo
-        )
-        val_set = ReefDataset(self.config.data.csv_file,
-                              self.config.data.root_path,
-                              augmentation=self.config.augmentation,
-                              train=False,
-                              conv_bbox=conv_bbox,
-                              transforms=T.get_transform(
-                                  False,
-                                  self.config.augmentation,
-                                  format=format))
+        train_set = LesionDataset(train_json_list[:41748], mode='train')
+        val_set = LesionDataset(train_json_list[41748:], mode='test')
+        
+#         train_set = ReefDataset(
+#             self.config.data.csv_file,
+#             self.config.data.root_path,
+#             augmentation=self.config.augmentation,
+#             train=True,
+#             conv_bbox=conv_bbox,
+#             transforms=T.get_transform(
+#                 True, self.config.augmentation, format=format
+#             ),  #  FIXME changer format en fonction de fasterRCNN et yolo
+#         )
+#         val_set = ReefDataset(self.config.data.csv_file,
+#                               self.config.data.root_path,
+#                               augmentation=self.config.augmentation,
+#                               train=False,
+#                               conv_bbox=conv_bbox,
+#                               transforms=T.get_transform(
+#                                   False,
+#                                   self.config.augmentation,
+#                                   format=format))
 
         train_loader = torch.utils.data.DataLoader(
             train_set,
