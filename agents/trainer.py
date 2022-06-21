@@ -12,7 +12,7 @@ import utils.WandbLogger as WandbLogger
 import wandb
 import yaml
 # from datasets.ReefDataset import ReefDataset, collate_fn
-from datasets.LesionDataset import LesionDataset
+from datasets.LesionDataset import LesionDataset, collate_fn
 from easydict import EasyDict
 from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
@@ -20,6 +20,7 @@ from torchmetrics.detection.map import MAP
 from tqdm import tqdm
 from glob import glob
 import json
+from io import BytesIO
 
 wandb.login()
 
@@ -142,9 +143,9 @@ class Trainer():
         for file in train_files:
             with open(file, "r") as json_file:
                 train_json_list.append(json.load(json_file))
-
+        
         train_set = LesionDataset(train_json_list[:41748], mode='train')
-        val_set = LesionDataset(train_json_list[41748:], mode='test')
+        val_set = LesionDataset(train_json_list[41748:], mode='train')
         
 #         train_set = ReefDataset(
 #             self.config.data.csv_file,
@@ -203,7 +204,7 @@ class Trainer():
 
         for batch_idx, (data, targets) in enumerate(
                 train_iterator):  # put coefficient for each loss
-
+            
             if "yolox" not in self.config.model.name:
                 images = list(image.to(self.device) for image in data)
                 targets = [{k: v.to(self.device)
@@ -331,8 +332,8 @@ class Trainer():
                 # Update metrics
                 gt_bboxes_list = [t['boxes'].cpu().numpy() for t in targets]
 
-                metrics_inst["F2_score"].update(gt_bboxes_list,
-                                                pred_bboxes_list)
+                #metrics_inst["F2_score"].update(gt_bboxes_list,
+                #                                pred_bboxes_list)
 
                 # MAP
                 for t in targets:
@@ -375,9 +376,9 @@ class Trainer():
 
         # Init Metrics validation # TODO metrics instance {"train": , "validation": } en variable de classe
         metrics_instance = {
-            "F2_score":
-            ut_metrics.F2_score_competition(compute_on_step=False).to(
-                self.device),
+            #"F2_score":
+            #ut_metrics.F2_score_competition(compute_on_step=False).to(
+            #    self.device),
             "MAP": MAP(compute_on_step=False).to(self.device)
         }
 
@@ -442,11 +443,11 @@ class Trainer():
                     break
 
             # Checkpoint
-            model_checkpoint.save_checkpoint(
-                self,
-                metrics,
-                real_epoch,
-                fold=self.fold if hasattr(self, 'fold') else None)
+            #model_checkpoint.save_checkpoint(
+            #    self,
+            #    metrics,
+            #    real_epoch,
+            #    fold=self.fold if hasattr(self, 'fold') else None)
 
             model_checkpoint.save_weights(
                 self.model, metrics, real_epoch,

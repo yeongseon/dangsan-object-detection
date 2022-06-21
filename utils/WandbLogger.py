@@ -2,7 +2,8 @@
     Author: Clément APAVOU
 '''
 import wandb
-from utils.constant import COTS_CLASSES
+#from utils.constant import COTS_CLASSES
+from utils.constant import LESION_CLASSES
 
 class WandbLogger():
     
@@ -42,7 +43,7 @@ class WandbLogger():
                 scores = output["scores"]
                 for box, label, score in zip(boxes, labels, scores):
                     dict_pred = {}
-                    box_caption = COTS_CLASSES[label]
+                    box_caption = LESION_CLASSES[label]
                     position = {pos_conv[i]:float(box[i]) for i in range(4)}
                     
                     dict_pred["position"] = position
@@ -53,7 +54,7 @@ class WandbLogger():
 
                     box_data_preds.append(dict_pred)
 
-                dict_boxes["predictions"] = {'box_data': box_data_preds, "class_labels": COTS_CLASSES}
+                dict_boxes["predictions"] = {'box_data': box_data_preds, "class_labels": LESION_CLASSES}
 
             box_data_gt = []
             boxes = target['boxes'] # FIXME différent pour yolo 
@@ -61,7 +62,7 @@ class WandbLogger():
             for box, label in zip(boxes, labels):
                 
                 dict_gt = {}
-                box_caption = COTS_CLASSES[label]
+                box_caption = LESION_CLASSES[label]
                 position = {pos_conv[i]:float(box[i]) for i in range(4)}
                 
                 dict_gt["position"] = position
@@ -71,7 +72,7 @@ class WandbLogger():
 
                 box_data_gt.append(dict_gt)
             
-            dict_boxes["ground_truth"] = {'box_data': box_data_gt, "class_labels": COTS_CLASSES}
+            dict_boxes["ground_truth"] = {'box_data': box_data_gt, "class_labels": LESION_CLASSES}
 
             img = wandb.Image(image, boxes=dict_boxes)
 

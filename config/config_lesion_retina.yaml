@@ -15,11 +15,11 @@ augmentation:
     h: 720
 
 configs:
-  epoch: 150
-  batch_size: 1
+  epoch: 300
+  batch_size: 32
   seed: 1
   checkpoint:
-    monitor: "validation/MAP" ##
+    monitor: "validation/MAP" 
     mode: "max"
   early_stopping:
     monitor: "train/loss_sum"
@@ -29,6 +29,7 @@ configs:
 model:
   name: model.RetinaNet.RetinaNet
   params:
+    nclasses: 5
     pretrained: True
     pretrained_backbone: True
 
