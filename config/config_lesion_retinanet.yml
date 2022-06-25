@@ -1,8 +1,8 @@
 comment: Commentaire sur l'entraînement
 
 wandb:
-  name_project: "dacon-leison-bh"
-  entity: "dacon-leison-bh"
+  name_project: "Dacon-Leison-Detection-BH"
+  entity: "Dacon-Leison-Detection-BH"
   name_run: 
 
 data:
