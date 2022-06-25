@@ -8,8 +8,6 @@ from torch.utils.data import Dataset
 import numpy as np
 import albumentations as A
 from .transforms import ToTensor
-from torchvision import transforms
-
 from utils.logger import init_logger
 
 log_level = "DEBUG"
