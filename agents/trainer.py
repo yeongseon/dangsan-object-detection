@@ -156,7 +156,8 @@ class Trainer():
         #                           format=format))
 
 
-        train_files = sorted(glob('../lesion_detection/train/*'))
+        # train_files = sorted(glob('../lesion_detection/train/*'))
+        train_files = sorted(glob(self.config.data.root_path))
 
         train_json_list = []
         for file in train_files:
