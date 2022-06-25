@@ -14,7 +14,7 @@ from utils.logger import init_logger
 log_level = "DEBUG"
 logger = init_logger("Dataloader", log_level)
 
-class LeisonDataset(Dataset):
+class LesionDataset(Dataset):
     def __init__(self, json_list, mode='train'):
         self.mode = mode
         self.file_name = [json_file['file_name'] for json_file in json_list] #File Name을 얻어보고

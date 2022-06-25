@@ -11,7 +11,7 @@ import utils.WandbLogger as WandbLogger
 import wandb
 import yaml
 # from datasets.ReefDataset import ReefDataset, collate_fn
-from datasets.LesionDataset import LesionDataset, collate_fn
+from datasets.LesionDataset import LesionDataset, collate_fn 
 from easydict import EasyDict
 from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
