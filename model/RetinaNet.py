@@ -9,7 +9,11 @@ import math
 class RetinaNet(nn.Module):
     """
     nclasses: 분류해야 하는 Class 수
-    Pretrained 
+    pretrained (bool) – If True, returns a model pre-trained on COCO train2017
+    progress (bool) – If True, displays a progress bar of the download to stderr
+    num_classes (int) – number of output classes of the model (including the background)
+    pretrained_backbone (bool) – If True, returns a model with backbone pre-trained on Imagenet
+    trainable_backbone_layers (int) – number of trainable (not frozen) resnet layers starting from final
     
     """
     def __init__(self,
@@ -33,6 +37,7 @@ class RetinaNet(nn.Module):
         num_anchors = model.head.classification_head.num_anchors
         # __init__ function
         model.head.classification_head.num_classes = nclasses
+        
         out_features = model.head.classification_head.conv[0].out_channels
         # parameters: in_channel, out_channel, kernenl size
         cls_logits = torch.nn.Conv2d(out_features, num_anchors * nclasses, kernel_size = 3, stride=1, padding=1)

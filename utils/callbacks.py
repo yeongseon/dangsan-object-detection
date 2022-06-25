@@ -21,6 +21,9 @@ class EarlyStopping():
 
         assert self.monitor in metrics, f"{self.monitor} not a metric"
         value = metrics[self.monitor]
+        if type(value).__name__ == "COCOMetricResults" :
+            value = value['map_50']
+
         if self.mode == "max":
             if value < self.value_keep:
                 self.trigger_time += 1
@@ -75,6 +78,11 @@ class ModelCheckpoint():
 
         value = self._check_metric_name(metrics)
 
+        print(type(value).__name__)
+        if type(value).__name__ == "COCOMetricResults" :
+            value = value['map_50']
+        
+
         if self.mode == "max":
             if value >= self.value_keep:
                 self.logger.info(
@@ -98,6 +106,9 @@ class ModelCheckpoint():
                      name="weight"):
         if epoch is not None: name += f"_{epoch}"
         if fold is not None: name += f"_fold_{fold}"
+
+        if type(value).__name__ == "COCOMetricResults" :
+            value = value['map_50']
 
         value = self._check_metric_name(metrics)
 

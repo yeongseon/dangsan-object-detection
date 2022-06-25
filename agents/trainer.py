@@ -10,12 +10,16 @@ import utils.utils as utils
 import utils.WandbLogger as WandbLogger
 import wandb
 import yaml
-from datasets.ReefDataset import ReefDataset, collate_fn
+# from datasets.ReefDataset import ReefDataset, collate_fn
+from datasets.LesionDataset import LeisonDataset, colalte_fn
 from easydict import EasyDict
 from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
 from torchmetrics.detection.map import MAP
 from tqdm import tqdm
+from glob import glob
+import json
+from io import BytesIO
 
 wandb.login()
 
@@ -131,25 +135,44 @@ class Trainer():
         conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
         format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
 
-        train_set = ReefDataset(
-            self.config.data.csv_file,
-            self.config.data.root_path,
-            augmentation=self.config.augmentation,
-            train=True,
-            conv_bbox=conv_bbox,
-            transforms=T.get_transform(
-                True, self.config.augmentation, format=format
-            ),  #  FIXME changer format en fonction de fasterRCNN et yolo
+        # train_set = ReefDataset(
+        #     self.config.data.csv_file,
+        #     self.config.data.root_path,
+        #     augmentation=self.config.augmentation,
+        #     train=True,
+        #     conv_bbox=conv_bbox,
+        #     transforms=T.get_transform(
+        #         True, self.config.augmentation, format=format
+        #     ),  #  FIXME changer format en fonction de fasterRCNN et yolo
+        # )
+        # val_set = ReefDataset(self.config.data.csv_file,
+        #                       self.config.data.root_path,
+        #                       augmentation=self.config.augmentation,
+        #                       train=False,
+        #                       conv_bbox=conv_bbox,
+        #                       transforms=T.get_transform(
+        #                           False,
+        #                           self.config.augmentation,
+        #                           format=format))
+
+
+        train_files = sorted(glob('../lesion_detection/train/*'))
+
+        train_json_list = []
+        for file in train_files:
+            with open(file, "r") as json_file:
+                train_json_list.append(json.load(json_file))
+
+        train_val_split_ratio = 0.7
+        train_idx = int(len(train_json_list)*train_val_split_ratio)
+
+        train_set = LesionDataset(train_json_list[:train_idx], mode='train')
+        val_set = LesionDataset(train_json_list[train_idx:], mode='train')
+        
+        train_loader = torch.utils.data.DataLoader(
+            train_set
         )
-        val_set = ReefDataset(self.config.data.csv_file,
-                              self.config.data.root_path,
-                              augmentation=self.config.augmentation,
-                              train=False,
-                              conv_bbox=conv_bbox,
-                              transforms=T.get_transform(
-                                  False,
-                                  self.config.augmentation,
-                                  format=format))
+        
 
         train_loader = torch.utils.data.DataLoader(
             train_set,
@@ -316,8 +339,8 @@ class Trainer():
                 # Update metrics
                 gt_bboxes_list = [t['boxes'].cpu().numpy() for t in targets]
 
-                metrics_inst["F2_score"].update(gt_bboxes_list,
-                                                pred_bboxes_list)
+                # metrics_inst["F2_score"].update(gt_bboxes_list,
+                #                                 pred_bboxes_list)
 
                 # MAP
                 for t in targets:
@@ -360,9 +383,9 @@ class Trainer():
 
         # Init Metrics validation # TODO metrics instance {"train": , "validation": } en variable de classe
         metrics_instance = {
-            "F2_score":
-            ut_metrics.F2_score_competition(compute_on_step=False).to(
-                self.device),
+            # "F2_score":
+            # ut_metrics.F2_score_competition(compute_on_step=False).to(
+            #     self.device),
             "MAP": MAP(compute_on_step=False).to(self.device)
         }
 
@@ -427,11 +450,11 @@ class Trainer():
                     break
 
             # Checkpoint
-            model_checkpoint.save_checkpoint(
-                self,
-                metrics,
-                real_epoch,
-                fold=self.fold if hasattr(self, 'fold') else None)
+            # model_checkpoint.save_checkpoint(
+            #     self,
+            #     metrics,
+            #     real_epoch,
+            #     fold=self.fold if hasattr(self, 'fold') else None)
 
             model_checkpoint.save_weights(
                 self.model, metrics, real_epoch,
