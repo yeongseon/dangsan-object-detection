@@ -2,7 +2,7 @@
     Author: Clément APAVOU
 '''
 import wandb
-from utils.constant import COTS_CLASSES
+from utils.constant import COTS_CLASSES, LESION_CLASSES
 
 class WandbLogger():
     
@@ -21,7 +21,7 @@ class WandbLogger():
         images, targets = batch
 
         images = [img.cpu().numpy().transpose((1, 2, 0)) for img in list(images)[:n]]
-        targets = [{k: v.cpu().numpy() for k, v in t.items()} for t in targets[:n]]
+        targets = [{k: v.cpu().numpy() for k, v in t.items() if 'img_size' != k } for t in targets[:n]]
         if outputs != None:
             outputs = [{k: v.cpu().detach().numpy() for k, v in out.items()} for out in outputs[:n]]
         
@@ -42,7 +42,7 @@ class WandbLogger():
                 scores = output["scores"]
                 for box, label, score in zip(boxes, labels, scores):
                     dict_pred = {}
-                    box_caption = COTS_CLASSES[label]
+                    box_caption = LESION_CLASSES[label]
                     position = {pos_conv[i]:float(box[i]) for i in range(4)}
                     
                     dict_pred["position"] = position
@@ -53,7 +53,7 @@ class WandbLogger():
 
                     box_data_preds.append(dict_pred)
 
-                dict_boxes["predictions"] = {'box_data': box_data_preds, "class_labels": COTS_CLASSES}
+                dict_boxes["predictions"] = {'box_data': box_data_preds, "class_labels": LESION_CLASSES}
 
             box_data_gt = []
             boxes = target['boxes'] # FIXME différent pour yolo 
@@ -61,7 +61,7 @@ class WandbLogger():
             for box, label in zip(boxes, labels):
                 
                 dict_gt = {}
-                box_caption = COTS_CLASSES[label]
+                box_caption = LESION_CLASSES[label]
                 position = {pos_conv[i]:float(box[i]) for i in range(4)}
                 
                 dict_gt["position"] = position
@@ -71,7 +71,7 @@ class WandbLogger():
 
                 box_data_gt.append(dict_gt)
             
-            dict_boxes["ground_truth"] = {'box_data': box_data_gt, "class_labels": COTS_CLASSES}
+            dict_boxes["ground_truth"] = {'box_data': box_data_gt, "class_labels": LESION_CLASSES}
 
             img = wandb.Image(image, boxes=dict_boxes)
 
