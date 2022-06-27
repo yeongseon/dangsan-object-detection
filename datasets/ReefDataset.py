@@ -68,6 +68,7 @@ class ReefDataset(Dataset):
         try:
             img = Image.open(path_img).convert("RGB")
             img.verify()  # Verify it is in fact an image
+            new_h, new_w, _  = np.array(img).shape # to return image shape
         except (IOError, SyntaxError) as e:
             # logger.warning('Bad file:', path_img)
             print(('Bad file:', path_img))
@@ -111,6 +112,9 @@ class ReefDataset(Dataset):
         # target["image_id"] = image_id
         target["area"] = area
         target["iscrowd"] = iscrowd
+        target["image_id"] = torch.tensor([idx]) # to calculate image scale in train & valid code
+        target["img_size"] = (new_h, new_w)
+        target["img_scale"] = torch.tensor([1.0])
 
         # transformations using albumentation library
         if self.transforms is not None:
@@ -142,11 +146,29 @@ class ReefDataset(Dataset):
                     transformed = transforms(image=np.array(img))
                     img = torch.as_tensor(transformed['image'])
 
-        return img, target
+        return img, target, image_id
 
     def __len__(self):
         return len(self.img_annotations)
 
-
 def collate_fn(batch):
-    return tuple(zip(*batch))
+        images, targets, image_ids = tuple(zip(*batch))
+        # images = torch.stack(images)
+        # images = images.float()
+
+        boxes = [target["boxes"].float() for target in targets]
+        labels = [target["labels"].float() for target in targets]
+        img_size = torch.tensor([target["img_size"] for target in targets]).float()
+        img_scale = torch.tensor([target["img_scale"] for target in targets]).float()
+
+        annotations = {
+            "boxes": boxes,
+            "labels": labels,
+            "img_size": img_size,
+            "img_scale": img_scale,
+        }
+
+        return images, annotations, targets, image_ids
+
+# def collate_fn(batch):
+#     return tuple(zip(*batch))
