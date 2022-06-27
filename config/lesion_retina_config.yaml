@@ -1,0 +1,46 @@
+comment: Commentaire sur l'entraînement
+
+wandb:
+  name_project: "medical_detection"
+  entity: "medical-detection"
+  name_run: 
+
+data:
+  data_dir: dangsan-object-detection/data
+
+augmentation:
+  size: 
+    w: 512
+    h: 512
+
+configs:
+  epoch: 150
+  batch_size: 16
+  seed: 1
+  checkpoint:
+    monitor: "validation/MAP" 
+    mode: "max"
+  early_stopping:
+    monitor: "train/loss_sum"
+    mode: "min"
+    patience: 80
+
+model:
+  name: model.RetinaNet.RetinaNet
+  params:
+    nclasses: 5 # RetinaNet 5, EfficientDetModel = 4
+    image_size: 512 # only for EfficientDetModel
+    pretrained: True
+    pretrained_backbone: True
+
+optimizer:
+  name: torch.optim.SGD
+  params:
+    lr: 0.005
+    momentum : 0.9
+
+scheduler:
+  name: torch.optim.lr_scheduler.CosineAnnealingLR
+  params:
+    T_max: 150
+    eta_min: 0.00001
