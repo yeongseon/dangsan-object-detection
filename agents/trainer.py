@@ -1,10 +1,10 @@
+# -*- coding: utf-8 -*-
 '''
     Author: Clément APAVOU
 '''
 import datasets.transforms as T
 import numpy as np
 import torch
-from torchvision import transforms
 import utils.callbacks as callbacks
 import utils.metrics as ut_metrics
 import utils.utils as utils
@@ -12,8 +12,7 @@ import utils.WandbLogger as WandbLogger
 import wandb
 import yaml
 # from datasets.ReefDataset import ReefDataset, collate_fn
-from datasets.LesionDataset import LesionDataset, collate_fn 
-from torchvision import transforms
+from datasets.LesionDataset import LesionDataset, collate_fn
 from easydict import EasyDict
 from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
@@ -29,6 +28,7 @@ wandb.login()
 # from data import data_transforms
 
 
+# +
 class Trainer():
     def __init__(self, config_file, logger, args):
 
@@ -70,7 +70,7 @@ class Trainer():
         ##############################
         self.logger.info("Preparation training parameters")
 
-        # Device
+        # Device
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
         self.logger.info(f"Device : {self.device}")
@@ -136,46 +136,36 @@ class Trainer():
 
         conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
         format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
-
-        # train_set = ReefDataset(
-        #     self.config.data.csv_file,
-        #     self.config.data.root_path,
-        #     augmentation=self.config.augmentation,
-        #     train=True,
-        #     conv_bbox=conv_bbox,
-        #     transforms=T.get_transform(
-        #         True, self.config.augmentation, format=format
-        #     ),  #  FIXME changer format en fonction de fasterRCNN et yolo
-        # )
-        # val_set = ReefDataset(self.config.data.csv_file,
-        #                       self.config.data.root_path,
-        #                       augmentation=self.config.augmentation,
-        #                       train=False,
-        #                       conv_bbox=conv_bbox,
-        #                       transforms=T.get_transform(
-        #                           False,
-        #                           self.config.augmentation,
-        #                           format=format))
-
-
-        # train_files = sorted(glob('../lesion_detection/train/*'))
-        train_files = sorted(glob(self.config.data.root_path))
-
+        
+        train_files = sorted(glob('../lesion_detection/train/*'))
+        
         train_json_list = []
         for file in train_files:
             with open(file, "r") as json_file:
                 train_json_list.append(json.load(json_file))
-
-        train_val_split_ratio = 0.7
-        train_idx = int(len(train_json_list)*train_val_split_ratio)
-
-        train_set = LesionDataset(train_json_list[:train_idx], mode='train')
-        val_set = LesionDataset(train_json_list[train_idx:], mode='train')
         
-        train_loader = torch.utils.data.DataLoader(
-            train_set
-        )
+        train_set = LesionDataset(train_json_list[:41748], mode='train')
+        val_set = LesionDataset(train_json_list[41748:], mode='train')
         
+#         train_set = ReefDataset(
+#             self.config.data.csv_file,
+#             self.config.data.root_path,
+#             augmentation=self.config.augmentation,
+#             train=True,
+#             conv_bbox=conv_bbox,
+#             transforms=T.get_transform(
+#                 True, self.config.augmentation, format=format
+#             ),  #  FIXME changer format en fonction de fasterRCNN et yolo
+#         )
+#         val_set = ReefDataset(self.config.data.csv_file,
+#                               self.config.data.root_path,
+#                               augmentation=self.config.augmentation,
+#                               train=False,
+#                               conv_bbox=conv_bbox,
+#                               transforms=T.get_transform(
+#                                   False,
+#                                   self.config.augmentation,
+#                                   format=format))
 
         train_loader = torch.utils.data.DataLoader(
             train_set,
@@ -214,7 +204,7 @@ class Trainer():
 
         for batch_idx, (data, targets) in enumerate(
                 train_iterator):  # put coefficient for each loss
-
+            
             if "yolox" not in self.config.model.name:
                 images = list(image.to(self.device) for image in data)
                 targets = [{k: v.to(self.device)
@@ -239,7 +229,7 @@ class Trainer():
                 loss_dict = self.model(images, targets_yolox)
                 loss = loss_dict['total_loss']
 
-            # backpropagation
+            # backpropagation
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -265,7 +255,7 @@ class Trainer():
             if batch_idx == 0:
                 self.wandb_logger.log_images(
                     (data, targets), "train", 5
-                )  #  FIXME wrong images and targets for yolox (parce que labels pas les mêmes pour l'affichage)
+                )  #  FIXME wrong images and targets for yolox (parce que labels pas les mêmes pour l'affichage)
 
             if batch_idx >= self.config.configs.get('it', 100000):
                 break
@@ -325,7 +315,7 @@ class Trainer():
                         self.config.model.inf_params.confthre,
                         self.config.model.inf_params.nmsthre,
                         class_agnostic=True)
-                    # (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
+                    # (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
                     # TODO compute pred_bboxes_list
                     pred_bboxes_list = [
                         np.array([[0, 0, 0, 0, 0]])
@@ -339,11 +329,11 @@ class Trainer():
                                 dim=1)) for pred in outputs
                     ]
 
-                # Update metrics
+                # Update metrics
                 gt_bboxes_list = [t['boxes'].cpu().numpy() for t in targets]
 
-                # metrics_inst["F2_score"].update(gt_bboxes_list,
-                #                                 pred_bboxes_list)
+                #metrics_inst["F2_score"].update(gt_bboxes_list,
+                #                                pred_bboxes_list)
 
                 # MAP
                 for t in targets:
@@ -386,9 +376,9 @@ class Trainer():
 
         # Init Metrics validation # TODO metrics instance {"train": , "validation": } en variable de classe
         metrics_instance = {
-            # "F2_score":
-            # ut_metrics.F2_score_competition(compute_on_step=False).to(
-            #     self.device),
+            #"F2_score":
+            #ut_metrics.F2_score_competition(compute_on_step=False).to(
+            #    self.device),
             "MAP": MAP(compute_on_step=False).to(self.device)
         }
 
@@ -453,11 +443,11 @@ class Trainer():
                     break
 
             # Checkpoint
-            # model_checkpoint.save_checkpoint(
-            #     self,
-            #     metrics,
-            #     real_epoch,
-            #     fold=self.fold if hasattr(self, 'fold') else None)
+            #model_checkpoint.save_checkpoint(
+            #    self,
+            #    metrics,
+            #    real_epoch,
+            #    fold=self.fold if hasattr(self, 'fold') else None)
 
             model_checkpoint.save_weights(
                 self.model, metrics, real_epoch,
