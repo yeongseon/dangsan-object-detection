@@ -130,9 +130,9 @@ dmypy.json
 .pyre/
 
 # wandb
-wandb/*
+wandb/
 
-assets/tensorflow*
+assets/
 
 *.pth
 *.mp4

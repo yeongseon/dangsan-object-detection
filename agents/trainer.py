@@ -18,9 +18,10 @@ from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
 from torchmetrics.detection.map import MAP
 from tqdm import tqdm
+
 from glob import glob
-import json
 from io import BytesIO
+import os
 
 wandb.login()
 
@@ -136,16 +137,11 @@ class Trainer():
 
         conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
         format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
-        
-        train_files = sorted(glob('../lesion_detection/train/*'))
-        
-        train_json_list = []
-        for file in train_files:
-            with open(file, "r") as json_file:
-                train_json_list.append(json.load(json_file))
-        
-        train_set = LesionDataset(train_json_list[:41748], mode='train')
-        val_set = LesionDataset(train_json_list[41748:], mode='train')
+
+        train_files = sorted(glob('./assets/lesion_detection/train/*'))
+
+        train_set = LesionDataset(train_files, mode='train')
+        val_set = LesionDataset(train_files, mode='val')
         
 #         train_set = ReefDataset(
 #             self.config.data.csv_file,

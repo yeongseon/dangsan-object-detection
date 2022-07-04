@@ -7,7 +7,7 @@ wandb:
 
 data:
   csv_file: assets/tensorflow-great-barrier-reef/train.csv
-  root_path: assets/tensorflow-great-barrier-reef/train_images
+  root_path: /home/jh.park/w/test/od/dangsan-object-detection/assets/lesion_detection/train
 
 augmentation:
   size: 
@@ -27,7 +27,7 @@ configs:
     patience: 80
 
 model:
-  name: model.RetinaNet.RetinaNet
+  name: model.FasterRCNN.FasterRCNN
   params:
     nclasses: 5
     pretrained: True
