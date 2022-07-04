@@ -79,8 +79,9 @@ class ModelCheckpoint():
 
         value = self._check_metric_name(metrics)
         print(type(value).__name__)
-        if type(value).__name__ == "COCOMetricResults" :
-          value = value['map_50']
+
+        # if type(value).__name__ == "COCOMetricResults" :
+        #   value = value['map_50']
         
         if self.mode == "max":
             if value >= self.value_keep:
