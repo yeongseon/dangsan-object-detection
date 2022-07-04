@@ -26,28 +26,26 @@ logger = init_logger("Dataloader", log_level)
 
 
 class LesionDataset(Dataset):
-    def __init__(self, train_files, mode='train'):
-        self.json_list = json2list(train_files)
+    def __init__(self, json_list, mode='train'):
         self.mode = mode
-        self.file_name = [json_file['file_name'] for json_file in self.json_list]
-
+        self.file_name = [json_file['file_name'] for json_file in json_list]
         if mode == 'train':
             self.labels = []
-            for data in self.json_list:
+            for data in json_list:
                 label = []
                 for shapes in data['shapes']:
                     label.append(shapes['label'])
                 self.labels.append(label)
             self.points = []
-            for data in self.json_list:
+            for data in json_list:
                 point = []
                 for shapes in data['shapes']:
                     point.append(shapes['points'])
                 self.points.append(point)
-        self.imgs = [data['imageData'] for data in self.json_list]
+        self.imgs = [data['imageData'] for data in json_list]
         
-        self.widths = [data['imageWidth'] for data in self.json_list]
-        self.heights = [data['imageHeight'] for data in self.json_list]
+        self.widths = [data['imageWidth'] for data in json_list]
+        self.heights = [data['imageHeight'] for data in json_list]
         
         self.label_map ={
             '01_ulcer':1, '02_mass':2, '04_lymph':3, '05_bleeding':4

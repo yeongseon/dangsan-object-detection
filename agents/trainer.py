@@ -18,10 +18,9 @@ from model.yolox.data.data_augment import ValTransform
 from model.yolox.utils import postprocess
 from torchmetrics.detection.map import MAP
 from tqdm import tqdm
-
 from glob import glob
+import json
 from io import BytesIO
-import os
 
 wandb.login()
 
@@ -71,7 +70,7 @@ class Trainer():
         ##############################
         self.logger.info("Preparation training parameters")
 
-        # Device
+        # Device
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
         self.logger.info(f"Device : {self.device}")
@@ -137,11 +136,16 @@ class Trainer():
 
         conv_bbox = "pascal_voc" if "yolox" not in self.config.model.name else "yolo"
         format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
-
+        
         train_files = sorted(glob('./assets/lesion_detection/train/*'))
-
-        train_set = LesionDataset(train_files, mode='train')
-        val_set = LesionDataset(train_files, mode='val')
+        
+        train_json_list = []
+        for file in train_files:
+            with open(file, "r") as json_file:
+                train_json_list.append(json.load(json_file))
+        
+        train_set = LesionDataset(train_json_list[:41748], mode='train')
+        val_set = LesionDataset(train_json_list[41748:], mode='train')
         
 #         train_set = ReefDataset(
 #             self.config.data.csv_file,
@@ -151,7 +155,7 @@ class Trainer():
 #             conv_bbox=conv_bbox,
 #             transforms=T.get_transform(
 #                 True, self.config.augmentation, format=format
-#             ),  #  FIXME changer format en fonction de fasterRCNN et yolo
+#             ),  #  FIXME changer format en fonction de fasterRCNN et yolo
 #         )
 #         val_set = ReefDataset(self.config.data.csv_file,
 #                               self.config.data.root_path,
@@ -225,7 +229,7 @@ class Trainer():
                 loss_dict = self.model(images, targets_yolox)
                 loss = loss_dict['total_loss']
 
-            # backpropagation
+            # backpropagation
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -251,7 +255,7 @@ class Trainer():
             if batch_idx == 0:
                 self.wandb_logger.log_images(
                     (data, targets), "train", 5
-                )  #  FIXME wrong images and targets for yolox (parce que labels pas les mêmes pour l'affichage)
+                )  #  FIXME wrong images and targets for yolox (parce que labels pas les mêmes pour l'affichage)
 
             if batch_idx >= self.config.configs.get('it', 100000):
                 break
@@ -311,7 +315,7 @@ class Trainer():
                         self.config.model.inf_params.confthre,
                         self.config.model.inf_params.nmsthre,
                         class_agnostic=True)
-                    # (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
+                    # (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
                     # TODO compute pred_bboxes_list
                     pred_bboxes_list = [
                         np.array([[0, 0, 0, 0, 0]])
@@ -325,7 +329,7 @@ class Trainer():
                                 dim=1)) for pred in outputs
                     ]
 
-                # Update metrics
+                # Update metrics
                 gt_bboxes_list = [t['boxes'].cpu().numpy() for t in targets]
 
                 #metrics_inst["F2_score"].update(gt_bboxes_list,

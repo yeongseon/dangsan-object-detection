@@ -1,8 +1,8 @@
 comment: Commentaire sur l'entraînement
 
 wandb:
-  name_project: "lesion_detection"
-  entity: "lesion-detection"
+  name_project: "dacon-lesion-detection-jh"
+  entity: "kaggle_dangsan"
   name_run: 
 
 data:
