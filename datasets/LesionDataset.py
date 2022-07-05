@@ -54,7 +54,7 @@ class LesionDataset(Dataset):
         self.transforms = transforms.Compose([
             transforms.RandomHorizontalFlip(p = 0.5),
             transforms.RandomVerticalFlip(p = 0.5),
-            transforms.RandomCrop(224),
+            #transforms.RandomCrop(224),
             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
             transforms.ToTensor(),
             transforms.Normalize((0.4452, 0.4457, 0.4464), (0.2592, 0.2596, 0.2600))
