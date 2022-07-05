@@ -138,6 +138,7 @@ class Trainer():
         format = "pascal_voc" if "yolox" not in self.config.model.name else "coco"
         
         train_files = sorted(glob('./assets/lesion_detection/train/*'))
+        train_files = sorted(glob(self.config.data.root_path))
         
         train_json_list = []
         for file in train_files:
